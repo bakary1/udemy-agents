@@ -8,6 +8,7 @@ dependencies = [
     "agent-framework-core>=1.8.1",
     "agent-framework-openai>=1.8.1",
     "agno[mcp]>=2.6.14",
+    "anthropic>=0.118.0",
     "asyncio>=4.0.0",
     "deepagents>=0.6.8",
     "fastapi>=0.136.1",
