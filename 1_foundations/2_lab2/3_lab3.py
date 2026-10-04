@@ -2,6 +2,7 @@ import os
 import json
 from dotenv import load_dotenv
 from anthropic import Anthropic
+import gradio as gr
 from pypdf import PdfReader
 from pathlib import Path
 from IPython.display import Markdown, display
@@ -68,30 +69,21 @@ def get_text_response(message: str) -> str:
     return ""
 
 
-# Create the chat loop
-def chat():
-    messages = []
+# Create simple chat
+def chat(message, history):
+    messages = [{"role": m["role"], "content": m["content"]} for m in history]
+    messages.append({"role": "user", "content": message})
 
-    print("Chat with you your assistant (type 'quit' to exit)")
-
-    while True:
-        user_input = input("\n")
-        if user_input.lower() == "quit":
-            break
-
-        messages.append({"role": "user", "content": user_input})
-        print(messages)
-
-        response = client.messages.create(
-            model="claude-sonnet-5",
-            system=system_prompt,
-            max_tokens=1024,
-            messages=messages,
-        )
-
-        reply = get_text_response(response)
-        messages.append({"role": "assistant", "content": reply})
-        print(reply)
+    response = client.messages.create(
+        model="claude-sonnet-5",
+        system=system_prompt,
+        max_tokens=1024,
+        messages=messages,
+    )
+    return get_text_response(response)
 
 
-chat()
+gr.ChatInterface(chat).launch(inbrowser=True)
+
+
+# Create Agent with tools
