@@ -1,8 +1,10 @@
 import os
 import json
 from dotenv import load_dotenv
+import re
 from anthropic import Anthropic
 import gradio as gr
+import logging
 from pypdf import PdfReader
 from pathlib import Path
 from IPython.display import Markdown, display
@@ -86,4 +88,103 @@ def chat(message, history):
 gr.ChatInterface(chat).launch(inbrowser=True)
 
 
+#############################
 # Create Agent with tools
+#############################
+
+EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+# Define function / tool
+def save_email(email: str) -> str:
+    """Save a user's email to the contact list.
+
+    Call this when the user has provided their email address and wants to be
+    contacted.
+    """
+    email = email.strip()
+
+    if not EMAIL_PATTERN.fullmatch(email):
+        return (
+            f" Error: {email!r} is not a valid email address. Ask the user to check it"
+        )
+
+    file_path = Path(__file__).resolve().parent.parent / "twin" / "email.txt"
+
+    try:
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path, "a", encoding="utf-8") as f:
+            f.write(f"{email}\n")
+    except OSError:
+        logging.exception("Failed to save email to %s", file_path)
+        return "Error: could not save the email due to a server problem."
+
+    return f"Successfully recorded email: {email}"
+
+
+# Define the list of tools
+tools = [
+    {
+        "name": "save_email",
+        "description": "Save an email to the contact list.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "description": "The user's email address",
+                }
+            },
+            "required": ["email"],
+        },
+    }
+]
+
+# Map our functions and tools
+tool_functions = {"save_email": save_email}
+
+
+# Define conversation function
+def run_conversation(message, history):
+    messages = [{"role": m["role"], "content": m["content"]} for m in history]
+    messages.append({"role": "user", "content": message})
+
+    response = client.messages.create(
+        model="claude-sonnet-5",
+        system=system_prompt,
+        max_tokens=1024,
+        tools=tools,
+        messages=messages,
+    )
+
+    while response.stop_reason == "tool_use":
+        messages.append({"role": "assistant", "content": response.content})
+
+        tool_results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                function = tool_functions[block.name]
+                result = function(**block.input)
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": str(result),
+                    }
+                )
+
+        messages.append({"role": "user", "content": tool_results})
+
+        response = client.messages.create(
+            model="claude-sonnet-5",
+            system=system_prompt,
+            max_tokens=1024,
+            tools=tools,
+            messages=messages,
+        )
+
+    return get_text_response(response)
+
+
+# Test with gradio
+gr.ChatInterface(run_conversation).launch(inbrowser=True)
