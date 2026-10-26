@@ -7,8 +7,8 @@ from agents import Agent, Runner, trace, function_tool
 load_dotenv(override=True)
 
 agent = Agent(
-    name="Databricks tutor",
-    instructions="You are a Databricks expert that answers questions clearly and pedagocially.",
+    name="Assistant",
+    instructions="You are a helpful assistant.",
     model="gpt-5.4-mini",
 )
 
@@ -16,7 +16,7 @@ agent = Agent(
 async def main() -> None:
     result = await Runner.run(
         agent,
-        "What is the best way to learn databricks id I want to become proficient in data engineering as well as AI engineering?",
+        "Hi there, my name is?",
     )
     print(result.final_output)
 
