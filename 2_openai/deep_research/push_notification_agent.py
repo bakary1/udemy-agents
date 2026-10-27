@@ -1,9 +1,7 @@
 import os
-
 import requests
 from agents import Agent, ModelSettings, function_tool
 from dotenv import load_dotenv
-
 from messenger import push
 
 
